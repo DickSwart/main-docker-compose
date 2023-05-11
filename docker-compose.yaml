@@ -324,28 +324,33 @@ services:
       - "traefik.http.services.homepage-svc.loadbalancer.server.port=3000"
 
   # CrowdSec - Open-source & collaborative security IPS
+  # see https://www.smarthomebeginner.com/crowdsec-docker-compose-1-fw-bouncer/
+  # Because of this error, not all collections were loaded successfully. Let's check using the command
+  # sudo docker compose -f /home/USERNAME/docker/docker-compose.yaml exec -t crowdsec cscli collections list
+
   crowdsec:
     <<: *common-keys-core # See EXTENSION FIELDS at the top
     image: crowdsecurity/crowdsec
     container_name: crowdsec
     ports:
       - "$CROWDSEC_API_PORT:8080"
-      - "$ZEROTIER_IP_CLOUDSERVER:$CROWDSEC_PROMETHEUS_EXPORT:6060" # If you don't use ZeroTier remove use just $CROWDSEC_PROMETHEUS_EXPORT:6060
+    # - "$CROWDSEC_PROMETHEUS_EXPORT:6060" # For metrics export to Prometheus database.
+    # - "$ZEROTIER_IP_WEBSERVER:$CROWDSEC_PROMETHEUS_EXPORT:6060" # If you don't use ZeroTier remove use just $CROWDSEC_PROMETHEUS_EXPORT:6060
     environment:
-      COLLECTIONS: "crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/whitelist-good-actors crowdsecurity/iptables crowdsecurity/linux fulljackz/proxmox"
+      COLLECTIONS: "crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/whitelist-good-actors crowdsecurity/iptables crowdsecurity/linux crowdsecurity/nginx crowdsecurity/sshd fulljackz/proxmox"
       GID: "${GID-1000}"
-      CUSTOM_HOSTNAME: zDoc
-      DISABLE_LOCAL_API: "true" # Only after successfully registering and validating remote agent below.
-      # For the following, check local_api_credentials.yaml after cscli lapi register (secondary machine) and cscli machine validate (on primary machine)
-      AGENT_USERNAME: $CROWDSEC_AGENT_USERNAME
-      AGENT_PASSWORD: $CROWDSEC_AGENT_PASSWORD
-      LOCAL_API_URL: $CROWDSEC_LOCAL_API_URL
+      CUSTOM_HOSTNAME: vekter
+      # DISABLE_LOCAL_API: "true" # Only after successfully registering and validating remote agent below.
+      # # For the following, check local_api_credentials.yaml after cscli lapi register (secondary machine) and cscli machine validate (on primary machine)
+      # AGENT_USERNAME: $CROWDSEC_AGENT_USERNAME
+      # AGENT_PASSWORD: $CROWDSEC_AGENT_PASSWORD
+      # LOCAL_API_URL: $CROWDSEC_LOCAL_API_URL
     volumes:
-      - $DOCKERDIR/logs/cloudserver:/logs/cloudserver:ro
+      - $DIR_DOCKER/logs/traefik:/logs/traefik:ro
       - /var/log:/var/log:ro
-      - /media/zbox/log:/logs/zbox:ro
-      - $DOCKERDIR/appdata/crowdsec/data:/var/lib/crowdsec/data
-      - $DOCKERDIR/appdata/crowdsec/config:/etc/crowdsec
+      # - /media/zbox/log:/logs/zbox:ro
+      - $DIR_DOCKER/appdata/crowdsec/data:/var/lib/crowdsec/data
+      - $DIR_DOCKER/appdata/crowdsec/config:/etc/crowdsec
 
   # # CrowdSec Bouncer - Traefik
   # traefik-bouncer:
@@ -356,6 +361,7 @@ services:
   #     GIN_MODE: release # default is debug (more logs)
   #     CROWDSEC_BOUNCER_API_KEY: $CROWDSEC_BOUNCER_TRAEFIK_API_KEY
   #     CROWDSEC_AGENT_HOST: $CROWDSEC_LAPI_HOST:$CROWDSEC_LAPI_PORT # CrowdSec host and port
+
   ############################# DOWNLOADERS
 
   # Deluge is a lightweight, Free Software, cross-platform BitTorrent client.
