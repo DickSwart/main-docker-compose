@@ -350,7 +350,6 @@ services:
   # see https://www.smarthomebeginner.com/crowdsec-docker-compose-1-fw-bouncer/
   # Because of this error, not all collections were loaded successfully. Let's check using the command
   # sudo docker compose -f /home/USERNAME/docker/docker-compose.yaml exec -t crowdsec cscli collections list
-
   crowdsec:
     <<: *common-keys-core # See EXTENSION FIELDS at the top
     image: crowdsecurity/crowdsec
