@@ -158,7 +158,6 @@ services:
   # chmod 600 $DIR_DOCKER/appdata/traefik2/acme/acme.json
   # touch $DIR_DOCKER/logs/cloudserver/traefik.log
   # touch $DIR_DOCKER/logs/cloudserver/access.log
-
   traefik:
     <<: *common-keys-core # See EXTENSION FIELDS at the top
     container_name: traefik
@@ -350,6 +349,9 @@ services:
   # see https://www.smarthomebeginner.com/crowdsec-docker-compose-1-fw-bouncer/
   # Because of this error, not all collections were loaded successfully. Let's check using the command
   # sudo docker compose -f /home/USERNAME/docker/docker-compose.yaml exec -t crowdsec cscli collections list
+  # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli hub update
+  # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli console enroll clhivdfc40000lc08ueh0ydk5
+  # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli metrics
   crowdsec:
     <<: *common-keys-core # See EXTENSION FIELDS at the top
     image: crowdsecurity/crowdsec
@@ -359,6 +361,7 @@ services:
     # - "$CROWDSEC_PROMETHEUS_EXPORT:6060" # For metrics export to Prometheus database.
     # - "$ZEROTIER_IP_WEBSERVER:$CROWDSEC_PROMETHEUS_EXPORT:6060" # If you don't use ZeroTier remove use just $CROWDSEC_PROMETHEUS_EXPORT:6060
     environment:
+      <<: *default-tz-puid-pgid
       COLLECTIONS: "crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/whitelist-good-actors crowdsecurity/iptables crowdsecurity/linux crowdsecurity/nginx crowdsecurity/sshd fulljackz/proxmox"
       GID: "${GID-1000}"
       CUSTOM_HOSTNAME: vekter
