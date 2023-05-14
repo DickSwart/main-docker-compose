@@ -347,18 +347,18 @@ services:
 
   # CrowdSec - Open-source & collaborative security IPS
   # see https://www.smarthomebeginner.com/crowdsec-docker-compose-1-fw-bouncer/
-  # Because of this error, not all collections were loaded successfully. Let's check using the command
-  # sudo docker compose -f /home/USERNAME/docker/docker-compose.yaml exec -t crowdsec cscli collections list
+  # see https://www.smarthomebeginner.com/crowdsec-cloudflare-bouncer/
+  # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli collections list
   # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli hub update
-  # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli console enroll clhivdfc40000lc08ueh0ydk5
   # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli metrics
+  # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli bouncers list
   crowdsec:
     <<: *common-keys-core # See EXTENSION FIELDS at the top
     image: crowdsecurity/crowdsec
     container_name: crowdsec
     ports:
       - "$CROWDSEC_API_PORT:8080"
-    # - "$CROWDSEC_PROMETHEUS_EXPORT:6060" # For metrics export to Prometheus database.
+      - "$CROWDSEC_PROMETHEUS_EXPORT_PORT:6060" # For metrics export to Prometheus database.
     # - "$ZEROTIER_IP_WEBSERVER:$CROWDSEC_PROMETHEUS_EXPORT:6060" # If you don't use ZeroTier remove use just $CROWDSEC_PROMETHEUS_EXPORT:6060
     environment:
       <<: *default-tz-puid-pgid
@@ -373,19 +373,28 @@ services:
     volumes:
       - $DIR_DOCKER/logs/traefik:/logs/traefik:ro
       - /var/log:/var/log:ro
-      # - /media/zbox/log:/logs/zbox:ro
       - $DIR_DOCKER/appdata/crowdsec/data:/var/lib/crowdsec/data
       - $DIR_DOCKER/appdata/crowdsec/config:/etc/crowdsec
 
-  # # CrowdSec Bouncer - Traefik
-  # traefik-bouncer:
-  #   <<: *common-keys-core # See EXTENSION FIELDS at the top
-  #   image: fbonalair/traefik-crowdsec-bouncer
-  #   container_name: traefik-bouncer
-  #   environment:
-  #     GIN_MODE: release # default is debug (more logs)
-  #     CROWDSEC_BOUNCER_API_KEY: $CROWDSEC_BOUNCER_TRAEFIK_API_KEY
-  #     CROWDSEC_AGENT_HOST: $CROWDSEC_LAPI_HOST:$CROWDSEC_LAPI_PORT # CrowdSec host and port
+  # CrowdSec Bouncer - Cloudflare
+  # Set max ip number right the first time (max 10000). 
+  # Recreating the container deletes all ips and readds them causing cloudflare 429 rate limiting.
+  cloudflare-bouncer:
+    <<: *common-keys-core
+    image: crowdsecurity/cloudflare-bouncer
+    container_name: cloudflare-bouncer
+    volumes:
+      - $DIR_DOCKER/appdata/cloudflare-bouncer/cfg.yaml:/etc/crowdsec/bouncers/crowdsec-cloudflare-bouncer.yaml
+
+  # CrowdSec Bouncer - Traefik
+  traefik-bouncer:
+    <<: *common-keys-core # See EXTENSION FIELDS at the top
+    image: fbonalair/traefik-crowdsec-bouncer
+    container_name: traefik-bouncer
+    environment:
+      GIN_MODE: release # default is debug (more logs)
+      CROWDSEC_BOUNCER_API_KEY: $CROWDSEC_BOUNCER_TRAEFIK_API_KEY
+      CROWDSEC_AGENT_HOST: $CROWDSEC_LAPI_HOST:$CROWDSEC_LAPI_PORT # CrowdSec host and port
 
   ############################# DOWNLOADERS
 
@@ -577,6 +586,35 @@ services:
       - homepage.description=Administration of MySQL
       - homepage.href=https://pma.$DOMAIN_NAME_MAIN
 
+  # Prometheus - Database for sensor data
+  prometheus:
+    <<: *common-keys-core
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "$PROMETHEUS_PORT:9090"
+    volumes:
+      - $DIR_DOCKER/appdata/prometheus/config:/etc/prometheus
+      - $DIR_DOCKER/appdata/prometheus/data:/prometheus
+    user: $PUID:$PGID
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    labels:
+      - "traefik.enable=true"
+      ## HTTP Routers
+      - "traefik.http.routers.prometheus-rtr.entrypoints=websecure"
+      - "traefik.http.routers.prometheus-rtr.rule=Host(`prometheus.$DOMAIN_NAME_MAIN`)"
+      ## Middlewares
+      - "traefik.http.routers.prometheus-rtr.middlewares=chain-oauth@file"
+      ## HTTP Services
+      - "traefik.http.routers.prometheus-rtr.service=prometheus-svc"
+      - "traefik.http.services.prometheus-svc.loadbalancer.server.port=9090"
+
   ############################# UTILITIES
 
   # Guacamole - Remote desktop, SSH, on Telnet on any HTML5 Browser
@@ -683,6 +721,26 @@ services:
   #     - "traefik.http.routers.deluge-rtr.service=gluetun-svc" # Deluge
   #     - "traefik.http.services.gluetun-svc.loadbalancer.server.port=8112" # Deluge
 
+  # # Uptime Kuma - Status Page & Monitoring Server
+  # uptime-kuma:
+  #   <<: *common-keys-core # See EXTENSION FIELDS at the top
+  #   image: louislam/uptime-kuma
+  #   container_name: uptime-kuma
+  #   networks:
+  #     - t2_proxy
+  #     - default
+  #   volumes:
+  #     - $DIR_DOCKER/appdata/uptime-kuma:/app/data
+  #   labels:
+  #     - "traefik.enable=true"
+  #     ## HTTP Routers
+  #     - "traefik.http.routers.uptime-kuma-rtr.entrypoints=websecure"
+  #     - "traefik.http.routers.uptime-kuma-rtr.rule=Host(`kuma.$DOMAIN_NAME_MAIN`)"
+  #     ## Middlewares
+  #     - "traefik.http.routers.uptime-kuma-rtr.middlewares=chain-oauth@file"
+  #     ## HTTP Services
+  #     - "traefik.http.routers.uptime-kuma-rtr.service=uptime-kuma-svc"
+  #     - "traefik.http.services.uptime-kuma-svc.loadbalancer.server.port=3001"
 
   # Jackett works as a proxy server: it translates queries from apps (Sonarr, SickRage, CouchPotato, Mylar, etc)
   # into tracker-site-specific http queries, parses the html response, then sends results back to the requesting software.
