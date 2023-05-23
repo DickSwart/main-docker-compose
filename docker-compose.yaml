@@ -472,6 +472,24 @@ services:
 
   ############################# DOWNLOADERS
 
+  # qBittorrent - Torrent downloader
+  qbittorrent:
+    <<: *common-keys-apps # See EXTENSION FIELDS at the top
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      <<: *default-tz-puid-pgid
+      UMASK_SET: 002
+      WEBUI_PORT: $QBITTORRENT_PORT
+    volumes:
+      - $DIR_DOCKER/appdata/qbittorrent:/config
+      - $DIR_DATA/downloads/torrents:/data/torrents # Ensure that downloads folder is set to /data/torrents in qBittorrent
+    ports:
+      - $QBITTORRENT_PORT:$QBITTORRENT_PORT
+      - 6881:6881
+      - 6881:6881/udp
+
+
   # Deluge is a lightweight, Free Software, cross-platform BitTorrent client.
   deluge:
     <<: *common-keys-apps
