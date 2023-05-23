@@ -474,9 +474,13 @@ services:
 
   # qBittorrent - Torrent downloader
   qbittorrent:
-    <<: *common-keys-apps # See EXTENSION FIELDS at the top
+    # <<: *common-keys-apps # See EXTENSION FIELDS at the top
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    network_mode: "service:gluetun"
     environment:
       <<: *default-tz-puid-pgid
       UMASK_SET: 002
@@ -484,11 +488,56 @@ services:
     volumes:
       - $DIR_DOCKER/appdata/qbittorrent:/config
       - $DIR_DATA/downloads/torrents:/data/torrents # Ensure that downloads folder is set to /data/torrents in qBittorrent
-    ports:
-      - $QBITTORRENT_PORT:$QBITTORRENT_PORT
-      - 6881:6881
-      - 6881:6881/udp
+    healthcheck: # https://github.com/qdm12/gluetun/issues/641#issuecomment-933856220
+      test: "curl -sf http://ipinfo.io/ip  || exit 1"
+      interval: 1m
+      timeout: 10s
+      retries: 1
+    labels: # Traefik labels added via glueten
+      deunhealth.restart.on.unhealthy: true
+      ## HomePage
+      homepage.group: Media Acquisitions
+      homepage.weight: 30
+      homepage.name: qBittorrent
+      homepage.icon: qbittorrent.png
+      homepage.href: https://qbit.$DOMAIN_NAME_MAIN
+      homepage.description: Torrent client
 
+  # Gluetun - VPN Client for Docker Containers and More
+  # Gluetun only for use by torrent clients + on demand lan devices.
+  # Arr apps do not need VPN (not recommended), unless you have ISP/country restrictions.
+  gluetun:
+    <<: *common-keys-core # See EXTENSION FIELDS at the top
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    ports:
+      - "$QBITTORRENT_PORT:$QBITTORRENT_PORT" # Exposing qBittorrent through Docker Host LAN IP
+    # #   - 8888:8888/tcp # HTTP proxy
+    # #   - 8388:8388/tcp # Shadowsocks
+    # #   - 8388:8388/udp # Shadowsocks
+    volumes:
+      - $DIR_DOCKER/appdata/gluetun:/gluetun
+    environment:
+      # See https://github.com/qdm12/gluetun/wiki
+      TZ: $TZ
+      VPN_SERVICE_PROVIDER: $GLUETUN_VPN_SERVICE_PROVIDER
+      VPN_TYPE: $GLUETUN_VPN_TYPE
+      OPENVPN_USER: $GLUETUN_OPENVPN_USER
+      OPENVPN_PASSWORD: $GLUETUN_OPENVPN_PASSWORD
+    labels:
+      traefik.enable: true
+      ## HTTP Routers
+      traefik.http.routers.gluetun-qbitorrent-rtr.entrypoints: websecure
+      traefik.http.routers.gluetun-qbitorrent-rtr.rule: Host(`qbit.$DOMAIN_NAME_MAIN`) # qBittorrent
+      ## Middlewares
+      traefik.http.routers.gluetun-qbitorrent-rtr.middlewares: chain-authelia@file # qBittorrent
+      ## HTTP Services
+      traefik.http.routers.gluetun-qbitorrent-rtr.service: gluetun-svc # qBittorrent
+      traefik.http.services.gluetun-svc.loadbalancer.server.port: $QBITTORRENT_PORT # qBittorrent
 
   # Deluge is a lightweight, Free Software, cross-platform BitTorrent client.
   deluge:
