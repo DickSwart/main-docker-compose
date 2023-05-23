@@ -555,7 +555,7 @@ services:
       - "$DELUGE_PORT:8112"
     volumes:
       - $DIR_DOCKER/appdata/deluge:/config
-      - $DIR_DATA/downloads/torrents:/downloads
+      - $DIR_DATA/downloads/torrents:/data/torrents # Ensure that downloads folder is set to /data/torrents
     environment:
       <<: *default-tz-puid-pgid
       UMASK_SET: 002
@@ -591,10 +591,63 @@ services:
       homepage.href: https://deluge.$DOMAIN_NAME_MAIN
       homepage.description: Torrent client
 
+  ############################# INDEXERS
+
+  # Prowlarr - Torrent proxy
+  prowlarr:
+    <<: *common-keys-apps # See EXTENSION FIELDS at the top
+    image: ghcr.io/linuxserver/prowlarr:develop
+    container_name: prowlarr
+    networks:
+      t2_proxy:
+        ipv4_address: 192.168.90.160
+    # ports:
+    #  - "$PROWLARR_PORT:9696"
+    volumes:
+      - $DIR_DOCKER/appdata/prowlarr:/config
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      <<: *default-tz-puid-pgid
+      UMASK_SET: 002
+    labels:
+      traefik.enable: true
+      ## HTTP Routers
+      traefik.http.routers.prowlarr-rtr.entrypoints: websecure
+      traefik.http.routers.prowlarr-rtr.rule: Host(`prowlarr.$DOMAIN_NAME_MAIN`)
+      ## Middlewares
+      traefik.http.routers.prowlarr-rtr.middlewares: chain-oauth@file
+      ## HTTP Services
+      traefik.http.routers.prowlarr-rtr.service: prowlarr-svc
+      traefik.http.services.prowlarr-svc.loadbalancer.server.port: 9696
+      ## HomePage
+      homepage.group: Media Acquisitions
+      homepage.weight: 30
+      homepage.name: Prowlarr
+      homepage.icon: prowlarr.png
+      homepage.href: https://prowlarr.$DOMAIN_NAME_MAIN
+      homepage.description: Torrent proxy
+
+  # Jackett works as a proxy server: it translates queries from apps (Sonarr, SickRage, CouchPotato, Mylar, etc)
+  # into tracker-site-specific http queries, parses the html response, then sends results back to the requesting software.
+  # This allows for getting recent uploads (like RSS) and performing searches.
+  # Jackett is a single repository of maintained indexer scraping & translation logic - removing the burden from other apps.
+  jackett:
+    <<: *common-keys-core # See EXTENSION FIELDS at the top
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: jackett
+    environment:
+      <<: *default-tz-puid-pgid
+    volumes:
+      - $DIR_DOCKER/appdata/jackett:/config
+      - $DIR_DATA/downloads/torrents/watch:/downloads
+    ports:
+      - $JACKETT_PORT:9117
+
   ############################# PVRS
 
   # Radarr - Movie management
   # Set url_base in radarr settings if using PathPrefix
+  # docker exec -it radarr /bin/bash
   radarr:
     <<: *common-keys-apps # See EXTENSION FIELDS at the top
     image: lscr.io/linuxserver/radarr:latest # latest was causing "Error parsing column 45" (used: nightly)
@@ -608,9 +661,8 @@ services:
       - $DIR_DOCKER/appdata/radarr:/config
       # Optional. See why MediaCover is mounted as volume https://github.com/htpcBeginner/docker-traefik/discussions/147
       - $DIR_TEMP/appdata/radarr/MediaCover:/config/MediaCover
-      # - $DIR_DATA:/data
-      - $DIR_MEDIA/movies:/movies
-      - $DIR_DATA/downloads/torrents:/downloads
+      - $DIR_DATA/downloads:/data
+      - $DIR_MEDIA:/data/media
       - "/etc/localtime:/etc/localtime:ro"
     environment:
       <<: *default-tz-puid-pgid
@@ -655,8 +707,8 @@ services:
       - $DIR_DOCKER/appdata/sonarr:/config
       # Optional. See why MediaCover is mounted as volume https://github.com/htpcBeginner/docker-traefik/discussions/147
       - $DIR_TEMP/appdata/sonarr/MediaCover:/config/MediaCover
-      - $DIR_MEDIA/tv:/tv
-      - $DIR_DATA/downloads/torrents:/downloads
+      - $DIR_DATA/downloads:/data
+      - $DIR_MEDIA:/data/media
       - "/etc/localtime:/etc/localtime:ro"
     environment:
       <<: *default-tz-puid-pgid
@@ -686,7 +738,50 @@ services:
       homepage.href: https://sonarr.$DOMAIN_NAME_MAIN
       homepage.description: Series management
 
+
+  # Readarr - Books management
+  readarr:
+    <<: *common-keys-apps # See EXTENSION FIELDS at the top
+    image: hotio/readarr:nightly
+    container_name: readarr
+    ports:
+      - "$READARR_PORT:8787"
+    volumes:
+      - $DIR_DOCKER/appdata/readarr:/config
+      - $DIR_DATA/downloads:/data
+      - $DIR_MEDIA:/data/media
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      <<: *default-tz-puid-pgid
+      UMASK: 002
+    labels:
+      traefik.enable: true
+      ## HTTP Routers Auth
+      traefik.http.routers.readarr-rtr.entrypoints: websecure
+      traefik.http.routers.readarr-rtr.rule: Host(`readarr.$DOMAIN_NAME_MAIN`)
+      ## Middlewares
+      traefik.http.routers.readarr-rtr.middlewares: chain-authelia@file
+      ## HTTP Services
+      traefik.http.routers.readarr-rtr.service: readarr-svc
+      traefik.http.services.readarr-svc.loadbalancer.server.port: 8787
+      ## HomePage
+      homepage.group: Media Acquisitions
+      homepage.weight: 10
+      homepage.name: Readarr
+      homepage.icon: readarr.png
+      homepage.href: https://readarr.$DOMAIN_NAME_MAIN
+      homepage.description: Books management
+
   ############################# UTILITIES
+
+  # FlareSolverr - proxy server to bypass Cloudflare protection
+  flaresolverr:
+    <<: *common-keys-apps # See EXTENSION FIELDS at the top
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      <<: *default-tz-puid-pgid
+      TEST_URL: http://ipinfo.io/ip
 
 # #docker exec -it phpmyadmin sh
 #   phpmyadmin:
@@ -882,21 +977,7 @@ services:
   #     - "traefik.http.routers.uptime-kuma-rtr.service=uptime-kuma-svc"
   #     - "traefik.http.services.uptime-kuma-svc.loadbalancer.server.port=3001"
 
-  # Jackett works as a proxy server: it translates queries from apps (Sonarr, SickRage, CouchPotato, Mylar, etc)
-  # into tracker-site-specific http queries, parses the html response, then sends results back to the requesting software.
-  # This allows for getting recent uploads (like RSS) and performing searches.
-  # Jackett is a single repository of maintained indexer scraping & translation logic - removing the burden from other apps.
-  jackett:
-    <<: *common-keys-core # See EXTENSION FIELDS at the top
-    image: lscr.io/linuxserver/jackett:latest
-    container_name: jackett
-    environment:
-      <<: *default-tz-puid-pgid
-    volumes:
-      - $DIR_DOCKER/appdata/jackett:/config
-      - $DIR_DATA/downloads/torrents/watch:/downloads
-    ports:
-      - $JACKETT_PORT:9117
+
 
   ############################# MAINTENANCE
 
@@ -985,9 +1066,3 @@ volumes:
       o: "addr=$NAS_IP_ADDRESS,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
       device: ":/volume1/docker-volumes/portainer"
       
-  # mariadb-data:
-  #   name: "mariadb-data"
-  #   driver_opts:
-  #     type: "nfs"
-  #     o: "addr=$NAS_IP_ADDRESS,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-  #     device: ":/volume1/docker-volumes/mariadb"
