@@ -510,6 +510,9 @@ services:
     <<: *common-keys-core # See EXTENSION FIELDS at the top
     image: qmcgaw/gluetun
     container_name: gluetun
+    networks:
+      t2_proxy:
+        ipv4_address: 192.168.90.150
     cap_add:
       - NET_ADMIN
     devices:
@@ -545,6 +548,9 @@ services:
     # <<: *common-keys-vpn # See EXTENSION FIELDS at the top
     image: lscr.io/linuxserver/deluge:latest
     container_name: deluge
+    networks:
+      t2_proxy:
+        ipv4_address: 192.168.90.151
     ports:
       - "$DELUGE_PORT:8112"
     volumes:
@@ -552,6 +558,7 @@ services:
       - $DIR_DATA/downloads/torrents:/downloads
     environment:
       <<: *default-tz-puid-pgid
+      UMASK_SET: 002
       # DOCKER_HOST: tcp://socket-proxy:2375
     healthcheck: # https://github.com/qdm12/gluetun/issues/641#issuecomment-933856220
       test: "curl -sf http://ipinfo.io/ip  || exit 1"
@@ -594,7 +601,7 @@ services:
     container_name: radarr
     networks:
       t2_proxy:
-        ipv4_address: 192.168.90.164
+        ipv4_address: 192.168.90.165
     ports:
       - "$RADARR_PORT:7878"
     volumes:
@@ -607,6 +614,7 @@ services:
       - "/etc/localtime:/etc/localtime:ro"
     environment:
       <<: *default-tz-puid-pgid
+      UMASK_SET: 002
     labels:
       traefik.enable: true
       ## HTTP Routers Auth Bypass
@@ -640,7 +648,7 @@ services:
     container_name: sonarr
     networks:
       t2_proxy:
-        ipv4_address: 192.168.90.167
+        ipv4_address: 192.168.90.166
     ports:
       - "$SONARR_PORT:8989"
     volumes:
@@ -652,6 +660,7 @@ services:
       - "/etc/localtime:/etc/localtime:ro"
     environment:
       <<: *default-tz-puid-pgid
+      UMASK_SET: 002
     labels:
       traefik.enable: true
       ## HTTP Routers Auth Bypass
@@ -975,6 +984,7 @@ volumes:
       type: "nfs"
       o: "addr=$NAS_IP_ADDRESS,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
       device: ":/volume1/docker-volumes/portainer"
+      
   # mariadb-data:
   #   name: "mariadb-data"
   #   driver_opts:
