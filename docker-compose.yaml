@@ -451,7 +451,7 @@ services:
       - $DIR_DOCKER/appdata/crowdsec/config:/etc/crowdsec
 
   # CrowdSec Bouncer - Cloudflare
-  # Set max ip number right the first time (max 10000). 
+  # Set max ip number right the first time (max 10000).
   # Recreating the container deletes all ips and readds them causing cloudflare 429 rate limiting.
   cloudflare-bouncer:
     <<: *common-keys-core
@@ -496,7 +496,7 @@ services:
     labels: # Traefik labels added via glueten
       deunhealth.restart.on.unhealthy: true
       ## HomePage
-      homepage.group: Media Acquisitions
+      homepage.group: Downloaders
       homepage.weight: 30
       homepage.name: qBittorrent
       homepage.icon: qbittorrent.png
@@ -559,7 +559,6 @@ services:
     environment:
       <<: *default-tz-puid-pgid
       UMASK_SET: 002
-      # DOCKER_HOST: tcp://socket-proxy:2375
     healthcheck: # https://github.com/qdm12/gluetun/issues/641#issuecomment-933856220
       test: "curl -sf http://ipinfo.io/ip  || exit 1"
       interval: 1m
@@ -584,7 +583,7 @@ services:
       traefik.http.routers.deluge-rtr-bypass.service: deluge-svc
       traefik.http.services.deluge-svc.loadbalancer.server.port: 8112
       ## HomePage
-      homepage.group: Media Acquisitions
+      homepage.group: Downloaders
       homepage.weight: 30
       homepage.name: Deluge
       homepage.icon: deluge.png
@@ -615,7 +614,7 @@ services:
       traefik.http.routers.prowlarr-rtr.entrypoints: websecure
       traefik.http.routers.prowlarr-rtr.rule: Host(`prowlarr.$DOMAIN_NAME_MAIN`)
       ## Middlewares
-      traefik.http.routers.prowlarr-rtr.middlewares: chain-oauth@file
+      traefik.http.routers.prowlarr-rtr.middlewares: chain-authelia@file
       ## HTTP Services
       traefik.http.routers.prowlarr-rtr.service: prowlarr-svc
       traefik.http.services.prowlarr-svc.loadbalancer.server.port: 9696
@@ -626,22 +625,6 @@ services:
       homepage.icon: prowlarr.png
       homepage.href: https://prowlarr.$DOMAIN_NAME_MAIN
       homepage.description: Torrent proxy
-
-  # Jackett works as a proxy server: it translates queries from apps (Sonarr, SickRage, CouchPotato, Mylar, etc)
-  # into tracker-site-specific http queries, parses the html response, then sends results back to the requesting software.
-  # This allows for getting recent uploads (like RSS) and performing searches.
-  # Jackett is a single repository of maintained indexer scraping & translation logic - removing the burden from other apps.
-  jackett:
-    <<: *common-keys-core # See EXTENSION FIELDS at the top
-    image: lscr.io/linuxserver/jackett:latest
-    container_name: jackett
-    environment:
-      <<: *default-tz-puid-pgid
-    volumes:
-      - $DIR_DOCKER/appdata/jackett:/config
-      - $DIR_DATA/downloads/torrents/watch:/downloads
-    ports:
-      - $JACKETT_PORT:9117
 
   ############################# PVRS
 
@@ -872,7 +855,7 @@ services:
   # exit the maridb container shell
   # - exit
   # -----------------
-  # docker exec -ti guacamole /bin/sh
+  # docker exec -ti guacamole /bin/bash
   guacamole:
     <<: *common-keys-apps # See EXTENSION FIELDS at the top
     image: guacamole/guacamole:latest
@@ -885,7 +868,6 @@ services:
     user: root
     environment:
       GUACD_HOSTNAME: guacamole-daemon
-      # MYSQL_HOSTNAME: mariadb
       MYSQL_HOSTNAME: $MARIADB_HOST
       MYSQL_PORT: $MARIADB_PORT
       MYSQL_DATABASE_FILE: /run/secrets/guac_db_name
@@ -1065,4 +1047,3 @@ volumes:
       type: "nfs"
       o: "addr=$NAS_IP_ADDRESS,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
       device: ":/volume1/docker-volumes/portainer"
-      
