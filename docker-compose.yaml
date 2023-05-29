@@ -427,6 +427,11 @@ services:
   # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli hub update
   # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli metrics
   # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli bouncers list
+  ## Create API Keys
+  # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli bouncers add host-firewall-bouncer-floki
+  # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli bouncers add cloudflare-bouncer-floki
+  # sudo docker compose -f /home/dickswart/docker/docker-compose.yaml exec -t crowdsec cscli bouncers add traefik-bouncer-floki
+
   crowdsec:
     <<: *common-keys-core # See EXTENSION FIELDS at the top
     image: crowdsecurity/crowdsec
@@ -983,7 +988,7 @@ services:
       WATCHTOWER_NOTIFICATION_URL: telegram://${TGRAM_WATCHTOWER_BOT_TOKEN}@telegram?channels=${TGRAM_CHAT_ID}
       WATCHTOWER_NOTIFICATIONS_LEVEL: info
       WATCHTOWER_NOTIFICATION_TEMPLATE: ---- Floki ----{{println}}{{range .}}{{.Message}}{{println}}{{end}}
-      WATCHTOWER_HTTP_API_METRICS: "true"
+      WATCHTOWER_HTTP_API_METRICS: true
       WATCHTOWER_HTTP_API_TOKEN: $WATCHTOWER_API_KEY
       DOCKER_HOST: tcp://socket-proxy:2375
 
