@@ -73,6 +73,12 @@ secrets:
     file: $DIR_DOCKER/secrets/authelia_storage_mysql_password
   authelia_notifier_smtp_password:
     file: $DIR_DOCKER/secrets/authelia_notifier_smtp_password
+  semaphore_mysql_password:
+    file: $DIR_DOCKER/secrets/semaphore_mysql_password
+  semaphore_access_key_encryption:
+    file: $DIR_DOCKER/secrets/semaphore_access_key_encryption
+  semaphore_admin_password:
+    file: $DIR_DOCKER/secrets/semaphore_admin_password
 
 #-----------------------------------------------------------------------------------------------------
 # EXTENSION FIELDS
@@ -838,6 +844,62 @@ services:
         target: /etc/grafana/grafana.crt
       - source: cert_key
         target: /etc/grafana/grafana.key
+
+  # Ansible Semaphore  - web interface for running Ansible playbooks.
+  # Create all databases and tables first
+  # docker exec -ti semaphore /bin/bash
+  semaphore:
+    <<: *common-keys-apps # See EXTENSION FIELDS at the top
+    image: semaphoreui/semaphore:latest
+    container_name: semaphore
+    ports:
+      - "${SEMAPHORE_PORT}:3000"
+    networks:
+      - t2_proxy
+      - default
+    user: "${PUID}:${PGID}"
+    # user: "root:root"
+    volumes:
+      - $DIR_DOCKER/appdata/semaphore/config:/etc/semaphore:rw
+      - $DIR_DOCKER/appdata/semaphore/inventory.yaml/:/inventory.yaml:ro
+      # - $DIR_DOCKER/appdata/semaphore/authorized-keys/:/authorized-keys:ro
+    environment:
+      SEMAPHORE_DB_USER: $SEMAPHORE_DB_USER
+      SEMAPHORE_DB_PASS_FILE: /run/secrets/semaphore_mysql_password
+      SEMAPHORE_DB_HOST: $MARIADB_HOST # mysql # for postgres, change to: postgres
+      SEMAPHORE_DB_PORT: $MARIADB_PORT # 3306 # change to 5432 for postgres
+      SEMAPHORE_DB_DIALECT: mysql
+      SEMAPHORE_DB: $SEMAPHORE_DB
+      SEMAPHORE_PLAYBOOK_PATH: /tmp/semaphore/
+      # SEMAPHORE_ADMIN_PASSWORD: changeme
+      SEMAPHORE_ADMIN_PASSWORD_FILE: /run/secrets/semaphore_admin_password
+      SEMAPHORE_ADMIN_NAME: $SEMAPHORE_ADMIN_NAME
+      SEMAPHORE_ADMIN_EMAIL: $SEMAPHORE_ADMIN_EMAIL
+      SEMAPHORE_ADMIN: $SEMAPHORE_ADMIN
+      # SEMAPHORE_ACCESS_KEY_ENCRYPTION: gs72mPntFATGJs9qK0pQ0rKtfidlexiMjYCH9gWKhTU=
+      SEMAPHORE_ACCESS_KEY_ENCRYPTION_FILE: /run/secrets/semaphore_access_key_encryption
+      ANSIBLE_HOST_KEY_CHECKING: false  # (optional) change to true if you want to enable host key checking
+    secrets:
+      - semaphore_mysql_password
+      - semaphore_access_key_encryption
+      - semaphore_admin_password
+    labels:
+      traefik.enable: true
+      ## HTTP Routers
+      traefik.http.routers.semaphore-rtr.entrypoints: websecure
+      traefik.http.routers.semaphore-rtr.rule: Host(`semaphore.$DOMAIN_NAME_MAIN`)
+      ## Middlewares
+      traefik.http.routers.semaphore-rtr.middlewares: chain-authelia@file
+      ## HTTP Services
+      traefik.http.routers.semaphore-rtr.service: semaphore-svc
+      traefik.http.services.semaphore-svc.loadbalancer.server.port: 3000
+      ## HomePage
+      homepage.group: Utilities
+      homepage.weight: 10
+      homepage.name: Semaphore
+      homepage.icon: semaphore.png
+      homepage.description: Web interface for running Ansible playbooks.
+      homepage.href: https://semaphore.$DOMAIN_NAME_MAIN
 
   # Guacamole - Remote desktop, SSH, on Telnet on any HTML5 Browser
   # Create all databases and tables first
