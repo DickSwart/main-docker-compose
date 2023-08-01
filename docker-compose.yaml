@@ -187,7 +187,7 @@ services:
   traefik:
     <<: *common-keys-core # See EXTENSION FIELDS at the top
     container_name: traefik
-    image: traefik:2.10
+    image: traefik:2.10.3
     networks:
       t2_proxy:
         ipv4_address: 192.168.90.254 # You can specify a static IP
@@ -371,7 +371,7 @@ services:
       - t2_proxy
       - socket_proxy
     volumes:
-      - "portainer-data:/data" # volume on nas
+      - "portainer-appdata:/data" # volume on nas
     environment:
       TZ: $TZ
     labels:
@@ -1108,9 +1108,13 @@ services:
 #-----------------------------------------------------------------------------------------------------
 
 volumes:
-  portainer-data:
-    name: "portainer-data"
+  portainer-appdata:
+    name: "portainer-appdata"
     driver_opts:
       type: "nfs"
       o: "addr=$NAS_IP_ADDRESS,rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
-      device: ":/volume1/docker-volumes/portainer"
+      device: ":/volume1/docker/appdata/portainer"
+
+
+# sudo mount -t nfs 192.168.1.210:/volume1/docker /home/dickswart/docker/temp
+# umount /home/dickswart/docker/temp
