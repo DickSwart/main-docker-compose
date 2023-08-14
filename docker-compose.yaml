@@ -506,6 +506,7 @@ services:
       retries: 1
     labels: # Traefik labels added via glueten
       deunhealth.restart.on.unhealthy: true
+      com.centurylinklabs.watchtower.monitor-only: true # watchtower only monito, but not update
       ## HomePage
       homepage.group: Downloaders
       homepage.weight: 30
@@ -543,6 +544,8 @@ services:
       OPENVPN_USER: $GLUETUN_OPENVPN_USER
       OPENVPN_PASSWORD: $GLUETUN_OPENVPN_PASSWORD
     labels:
+      com.centurylinklabs.watchtower.monitor-only: true # watchtower only monito, but not update
+      # Traefik
       traefik.enable: true
       ## HTTP Routers
       traefik.http.routers.gluetun-qbitorrent-rtr.entrypoints: websecure
