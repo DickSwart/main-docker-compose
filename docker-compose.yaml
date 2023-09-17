@@ -904,6 +904,21 @@ services:
       homepage.description: Web interface for running Ansible playbooks.
       homepage.href: https://semaphore.$DOMAIN_NAME_MAIN
 
+  # Twingate Connector - Zero Trust Network Access.
+  # docker exec -ti twingate-connector /bin/bash
+  twingate-connector:
+    <<: *common-keys-apps # See EXTENSION FIELDS at the top
+    image: twingate/connector:latest
+    container_name: twingate-connector
+    networks:
+      - t2_proxy
+      - default
+    environment:
+      TWINGATE_NETWORK: $TWINGATE_NETWORK
+      TWINGATE_ACCESS_TOKEN: $TWINGATE_ACCESS_TOKEN
+      TWINGATE_REFRESH_TOKEN: $TWINGATE_REFRESH_TOKEN
+      TWINGATE_LABEL_HOSTNAME: "`hostname`"
+
   # Guacamole - Remote desktop, SSH, on Telnet on any HTML5 Browser
   # Create all databases and tables first
   # $ docker run --rm guacamole/guacamole /opt/guacamole/bin/initdb.sh --mysql > ~/docker/scripts/guacamole_initdb.sql
