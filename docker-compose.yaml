@@ -400,7 +400,7 @@ services:
   # docker exec -ti homepage /bin/sh
   homepage:
     <<: *common-keys-core # See EXTENSION FIELDS at the top
-    image: ghcr.io/benphelps/homepage:latest
+    image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
     networks:
       - t2_proxy
