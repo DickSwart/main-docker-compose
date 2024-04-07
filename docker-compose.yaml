@@ -735,6 +735,43 @@ services:
       homepage.href: https://sonarr.$DOMAIN_NAME_MAIN
       homepage.description: Series management
 
+  # Bazarr is a companion application to Sonarr and Radarr - It can manage and download subtitles.
+  # Set url_base in sonarr settings if using PathPrefix
+  bazarr:
+    <<: *common-keys-apps # See EXTENSION FIELDS at the top
+    image: lscr.io/linuxserver/bazarr
+    container_name: bazarr
+    networks:
+      t2_proxy:
+        ipv4_address: 192.168.90.167
+    ports:
+      - "$BAZARR_PORT:6767"
+    volumes:
+      - $DIR_DOCKER/appdata/bazarr:/config
+      - $DIR_MEDIA/tv:/tv
+      - $DIR_MEDIA/movies:/movies
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      <<: *default-tz-puid-pgid
+      UMASK_SET: 002
+    labels:
+      traefik.enable: true
+      ## HTTP Routers Auth
+      traefik.http.routers.bazarr-rtr.entrypoints: websecure
+      traefik.http.routers.bazarr-rtr.rule: Host(`bazarr.$DOMAIN_NAME_MAIN`)
+      traefik.http.routers.bazarr-rtr.priority: 100
+      ## Middlewares
+      traefik.http.routers.bazarr-rtr.middlewares: chain-authelia@file
+      ## HTTP Services
+      traefik.http.routers.bazarr-rtr.service: bazarr-svc
+      traefik.http.services.bazarr-svc.loadbalancer.server.port: 6767
+      ## HomePage
+      homepage.group: Media Acquisitions
+      homepage.weight: 10
+      homepage.name: Bazarr
+      homepage.icon: bazarr.png
+      homepage.href: https://bazarr.$DOMAIN_NAME_MAIN
+      homepage.description: Subtitles management
 
   # Readarr - Books management
   readarr:
