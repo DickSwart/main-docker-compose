@@ -185,7 +185,7 @@ services:
   traefik:
     <<: *common-keys-core # See EXTENSION FIELDS at the top
     container_name: traefik
-    image: traefik:2.10.3
+    image: traefik:v3.0
     networks:
       t2_proxy:
         ipv4_address: 192.168.90.254 # You can specify a static IP
@@ -417,7 +417,7 @@ services:
       traefik.enable: true
       ## HTTP Routers
       traefik.http.routers.homepage-rtr.entrypoints: websecure
-      traefik.http.routers.homepage-rtr.rule: Host(`$DOMAIN_NAME_MAIN`,`www.$DOMAIN_NAME_MAIN`)
+      traefik.http.routers.homepage-rtr.rule: Host(`$DOMAIN_NAME_MAIN`) || Host(`www.$DOMAIN_NAME_MAIN`)
       ## Middlewares
       traefik.http.routers.homepage-rtr.middlewares: chain-authelia@file
       ## HTTP Services
@@ -666,7 +666,7 @@ services:
       traefik.enable: true
       ## HTTP Routers Auth Bypass
       traefik.http.routers.radarr-rtr-bypass.entrypoints: websecure
-      traefik.http.routers.radarr-rtr-bypass.rule: Host(`radarr.$DOMAIN_NAME_MAIN`) && (Headers(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
+      traefik.http.routers.radarr-rtr-bypass.rule: Host(`radarr.$DOMAIN_NAME_MAIN`) && (Header(`X-Api-Key`, `$RADARR_API_KEY`) || Query(`apikey`, `$RADARR_API_KEY`))
       traefik.http.routers.radarr-rtr-bypass.priority: 100
       ## HTTP Routers Auth
       traefik.http.routers.radarr-rtr.entrypoints: websecure
@@ -712,7 +712,7 @@ services:
       traefik.enable: true
       ## HTTP Routers Auth Bypass
       traefik.http.routers.sonarr-rtr-bypass.entrypoints: websecure
-      traefik.http.routers.sonarr-rtr-bypass.rule: Host(`sonarr.$DOMAIN_NAME_MAIN`) && (Headers(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
+      traefik.http.routers.sonarr-rtr-bypass.rule: Host(`sonarr.$DOMAIN_NAME_MAIN`) && (Header(`X-Api-Key`, `$SONARR_API_KEY`) || Query(`apikey`, `$SONARR_API_KEY`))
       traefik.http.routers.sonarr-rtr-bypass.priority: 100
       ## HTTP Routers Auth
       traefik.http.routers.sonarr-rtr.entrypoints: websecure
